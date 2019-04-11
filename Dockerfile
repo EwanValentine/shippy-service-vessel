@@ -1,10 +1,16 @@
 FROM golang:alpine as builder
 
-WORKDIR /app/shippy-service-vessel
+RUN apk update && apk upgrade && \
+    apk add --no-cache git
+
+RUN mkdir /app
+WORKDIR /app
+
+ENV GO111MODULE=on
 
 COPY . .
 
-RUN go get -u
+RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o shippy-service-vessel
 
 
