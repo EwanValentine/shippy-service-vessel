@@ -1,0 +1,39 @@
+version: '3.5'
+
+services:
+  vessel-service-consignment:
+    restart: always
+    container_name: "shippy-service-vessel"
+    build: .
+    ports:
+      - 50052
+    links:
+      - datastore
+    depends_on:
+      - datastore
+    networks:
+      - shippy-backend-tier
+      - vessel-tier
+    environment:
+      DB_HOST: "mongodb://datastore:27017"
+      MICRO_ADDRESS: ":50052"
+
+  datastore:
+    image: mongo:latest
+    container_name: "datastore"
+    environment:
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/dev/null
+    volumes:
+      - ./data/db:/data/db
+    networks:
+      - vessel-tier
+    ports:
+      - 27017
+    command: mongod --logpath=/dev/null
+
+networks:
+  vessel-tier:
+    name: vessel-tier
+  shippy-backend-tier:
+    name: shippy-backend-tier

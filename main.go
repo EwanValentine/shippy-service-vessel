@@ -13,6 +13,15 @@ const (
 	defaultHost = "datastore:27017"
 )
 
+func createDummyData(repo repository) {
+	vessels := []*Vessel{
+		{ID: "vessel001", Name: "Kane's Salty Secret", MaxWeight: 200000, Capacity: 500},
+	}
+	for _, v := range vessels {
+		repo.Create(context.Background(), v)
+	}
+}
+
 func main() {
 	srv := micro.NewService(
 		micro.Name("shippy.service.vessel"),
@@ -24,7 +33,7 @@ func main() {
 	if uri == "" {
 		uri = defaultHost
 	}
-	client, err := CreateClient(uri)
+	client, err := CreateClient(context.Background(), uri)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -35,6 +44,7 @@ func main() {
 		vesselCollection,
 	}
 
+	createDummyData(repository)
 
 	// Register our implementation with
 	pb.RegisterVesselServiceHandler(srv.Server(), &handler{repository})

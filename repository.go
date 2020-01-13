@@ -3,24 +3,73 @@ package main
 import (
 	"context"
 	pb "github.com/EwanValentine/shippy-service-vessel/proto/vessel"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type repository interface {
-	FindAvailable(spec *pb.Specification) (*pb.Vessel, error)
-	Create(vessel *pb.Vessel) error
+	FindAvailable(ctx context.Context, spec *Specification) (*Vessel, error)
+	Create(ctx context.Context, vessel *Vessel) error
 }
 
 type VesselRepository struct {
 	collection *mongo.Collection
 }
 
+type Specification struct {
+	Capacity int32
+	MaxWeight int32
+}
+
+func MarshalSpecification(spec *pb.Specification) *Specification {
+	return &Specification{
+		Capacity: spec.Capacity,
+		MaxWeight: spec.MaxWeight,
+	}
+}
+
+func UnmarshalSpecification(spec *Specification) *pb.Specification {
+	return &pb.Specification{
+		Capacity: spec.Capacity,
+		MaxWeight: spec.MaxWeight,
+	}
+}
+
+func MarshalVessel(vessel *pb.Vessel) *Vessel {
+	return &Vessel{
+		ID: vessel.Id,
+		Capacity: vessel.Capacity,
+		MaxWeight: vessel.MaxWeight,
+		Name: vessel.Name,
+		Available: vessel.Available,
+		OwnerID: vessel.OwnerId,
+	}
+}
+
+func UnmarshalVessel(vessel *Vessel) *pb.Vessel {
+	return &pb.Vessel{
+		Id: vessel.ID,
+		Capacity: vessel.Capacity,
+		MaxWeight: vessel.MaxWeight,
+		Name: vessel.Name,
+		Available: vessel.Available,
+		OwnerId: vessel.OwnerID,
+	}
+}
+
+type Vessel struct {
+	ID string
+	Capacity int32
+	Name string
+	Available bool
+	OwnerID string
+	MaxWeight int32
+}
+
 // FindAvailable - checks a specification against a map of vessels,
 // if capacity and max weight are below a vessels capacity and max weight,
 // then return that vessel.
-func (repository *VesselRepository) FindAvailable(spec *pb.Specification) (*pb.Vessel, error) {
+func (repository *VesselRepository) FindAvailable(ctx context.Context, spec *Specification) (*Vessel, error) {
 	filter := bson.D{{
 		"capacity",
 		bson.D{{
@@ -31,15 +80,15 @@ func (repository *VesselRepository) FindAvailable(spec *pb.Specification) (*pb.V
 			spec.MaxWeight,
 		}},
 	}}
-	var vessel *pb.Vessel
-	if err := repository.collection.FindOne(context.TODO(), filter).Decode(&vessel); err != nil {
+	vessel := &Vessel{}
+	if err := repository.collection.FindOne(ctx, filter).Decode(vessel); err != nil {
 		return nil, err
 	}
 	return vessel, nil
 }
 
 // Create a new vessel
-func (repository *VesselRepository) Create(vessel *pb.Vessel) error {
-	_, err := repository.collection.InsertOne(context.TODO(), vessel)
+func (repository *VesselRepository) Create(ctx context.Context, vessel *Vessel) error {
+	_, err := repository.collection.InsertOne(ctx, vessel)
 	return err
 }
